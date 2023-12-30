@@ -17,19 +17,130 @@
 #define PORT 8080
 #define BUFFER_SIZE 1024
 
+int is_login = 0;
+char USERNAME[100];
+int USER_ID;
+int SCORE;
+
 void login_func(int client_socket)
 {
     // send Json
     struct json_object *jobj = json_object_new_object();
     struct json_object *jtype = json_object_new_int(LOGIN);
-    struct json_object *jusername = json_object_new_string("admin");
-    struct json_object *jpassword = json_object_new_string("admin");
+    printf("Username: ");
+    char username[100];
+    scanf("%s", username);
+    struct json_object *jusername = json_object_new_string(username);
+    printf("Password: ");
+    char password[100];
+    scanf("%s", password);
+    struct json_object *jpassword = json_object_new_string(password);
     json_object_object_add(jobj, "type", jtype);
     json_object_object_add(jobj, "username", jusername);
     json_object_object_add(jobj, "password", jpassword);
     const char *json_string = json_object_to_json_string(jobj);
     send(client_socket, json_string, strlen(json_string), 0);
-    // receive Json
+}
+void register_func(int client_socket)
+{
+    // send Json
+    struct json_object *jobj = json_object_new_object();
+    struct json_object *jtype = json_object_new_int(REGISTER);
+    printf("Username: ");
+    char username[100];
+    scanf("%s", username);
+    struct json_object *jusername = json_object_new_string(username);
+    printf("Password: ");
+    char password[100];
+    scanf("%s", password);
+    struct json_object *jpassword = json_object_new_string(password);
+    json_object_object_add(jobj, "type", jtype);
+    json_object_object_add(jobj, "username", jusername);
+    json_object_object_add(jobj, "password", jpassword);
+    const char *json_string = json_object_to_json_string(jobj);
+    send(client_socket, json_string, strlen(json_string), 0);
+}
+void logout_func(int client_socket)
+{
+    // send Json
+    struct json_object *jobj = json_object_new_object();
+    struct json_object *jtype = json_object_new_int(LOGOUT);
+    json_object_object_add(jobj, "type", jtype);
+    json_object_object_add(jobj, "username", json_object_new_string(USERNAME));
+    const char *json_string = json_object_to_json_string(jobj);
+    send(client_socket, json_string, strlen(json_string), 0);
+    exit(0);
+}
+void *send_func(void *arg)
+{
+    int client_socket = *(int *)arg;
+    while (1)
+    {
+        printf("CLIENT EXAMPLE!\n");
+        printf("1. Login\n");
+        printf("2. Register\n");
+        printf("3. Exit\n");
+        printf("Your choice: ");
+        int choice;
+        scanf("%d", &choice);
+        switch (choice)
+        {
+        case 1:
+            login_func(client_socket);
+            break;
+        case 2:
+            register_func(client_socket);
+            break;
+        case 3:
+            logout_func(client_socket);
+        default:
+            break;
+        }
+    }
+}
+void *receive_func(void *arg)
+{
+    int client_socket = *(int *)arg;
+    char *buffer = (char *)malloc(BUFFER_SIZE);
+    memset(buffer, 0, BUFFER_SIZE);
+    while (1)
+    {
+        int len = recv(client_socket, buffer, BUFFER_SIZE, 0);
+        if (len == -1)
+        {
+            printf("Receive failed!\n");
+            exit(1);
+        }
+        printf("\n%s\n", buffer);
+        // get type:
+        struct json_object *parsed_json = json_tokener_parse(buffer);
+        struct json_object *jtype;
+        json_object_object_get_ex(parsed_json, "type", &jtype);
+        int type = json_object_get_int(jtype);
+        switch (type)
+        {
+        case LOGIN:
+            is_login = 1;
+            //get user_id, username, score
+            struct json_object *juser_id;
+            struct json_object *jusername;
+            struct json_object *jscore;
+            json_object_object_get_ex(parsed_json, "user_id", &juser_id);
+            json_object_object_get_ex(parsed_json, "username", &jusername);
+            json_object_object_get_ex(parsed_json, "score", &jscore);
+            USER_ID = json_object_get_int(juser_id);
+            strcpy(USERNAME, json_object_get_string(jusername));
+            SCORE = json_object_get_int(jscore);
+            break;
+        case REGISTER:
+
+            break;
+        case LOGOUT:
+            is_login = 0;
+            break;
+        }
+        memset(buffer, 0, BUFFER_SIZE);
+    }
 }
 int main()
 {
@@ -50,23 +161,12 @@ int main()
         printf("Connect failed!\n");
         exit(1);
     }
-    while (1)
-    {
-        printf("CLIENT EXAMPLE!\n");
-        printf("1. Login\n");
-        printf("2. Register\n");
-        printf("3. Exit\n");
-        printf("Your choice: ");
-        int choice;
-        scanf("%d", &choice);
-        switch (choice)
-        {
-        case 1:
-            login_func(client_socket);
-            break;
-
-        default:
-            break;
-        }
-    }
+    pthread_t send_thread;
+    pthread_create(&send_thread, NULL, send_func, (void *)&client_socket);
+    pthread_t receive_thread;
+    pthread_create(&receive_thread, NULL, receive_func, (void *)&client_socket);
+    pthread_join(send_thread, NULL);
+    pthread_join(receive_thread, NULL);
+    close(client_socket);
+    return 0;
 }

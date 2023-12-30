@@ -3,6 +3,7 @@
 typedef enum
 {
     LOGIN,
-    REGISTER
+    REGISTER,
+    LOGOUT,
 } type;
 #endif // TYPE_H

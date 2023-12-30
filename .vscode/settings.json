@@ -3,6 +3,7 @@
         "signal.h": "c",
         "json.h": "c",
         "type.h": "c",
-        "unistd.h": "c"
+        "unistd.h": "c",
+        "sha.h": "c"
     }
 }
