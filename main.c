@@ -14,7 +14,7 @@
 #include <json-c/json.h>
 #include "./include/type.h"
 #include "./src/authentication.h"
-
+#include "./src/room.h"
 #define PORT 8080
 #define MAXCLIENT 100
 #define BACKLOG 100
@@ -61,6 +61,12 @@ void *handleClient(void *arg)
             break;
         case REGISTER:
             handleRegister(client_socket, parsed_json);
+            break;
+        case LOGOUT:
+            handleLogout(client_socket, parsed_json);
+            break;
+        case CREATE_ROOM:
+            handleCreateRoom(client_socket, parsed_json);
             break;
         default:
             break;

@@ -9,7 +9,7 @@ sqlite3 *openDatabase()
     if (rc != SQLITE_OK)
     {
         fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
-        sqlite3_close(db);
+        sqlite3_close(db); // Close the database in case of an error
         return NULL;
     }
     return db;
@@ -17,5 +17,19 @@ sqlite3 *openDatabase()
 
 void closeDatabase(sqlite3 *db)
 {
-    sqlite3_close(db);
+    if (db)
+    {
+        // Attempt to finalize any remaining prepared statements
+        sqlite3_stmt *stmt;
+        while ((stmt = sqlite3_next_stmt(db, NULL)) != NULL)
+        {
+            sqlite3_finalize(stmt);
+        }
+
+        int rc = sqlite3_close(db);
+        if (rc != SQLITE_OK)
+        {
+            fprintf(stderr, "Error closing database: %s\n", sqlite3_errmsg(db));
+        }
+    }
 }

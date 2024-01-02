@@ -66,10 +66,19 @@ void logout_func(int client_socket)
     struct json_object *jobj = json_object_new_object();
     struct json_object *jtype = json_object_new_int(LOGOUT);
     json_object_object_add(jobj, "type", jtype);
-    json_object_object_add(jobj, "username", json_object_new_string(USERNAME));
+    json_object_object_add(jobj, "user_id", json_object_new_int(USER_ID));
     const char *json_string = json_object_to_json_string(jobj);
     send(client_socket, json_string, strlen(json_string), 0);
     exit(0);
+}
+void create_room(int client_socket)
+{
+    struct json_object *jobj = json_object_new_object();
+    struct json_object *jtype = json_object_new_int(CREATE_ROOM);
+    json_object_object_add(jobj, "type", jtype);
+    json_object_object_add(jobj, "user_id", json_object_new_int(USER_ID));
+    const char *json_string = json_object_to_json_string(jobj);
+    send(client_socket, json_string, strlen(json_string), 0);
 }
 void *send_func(void *arg)
 {
@@ -79,7 +88,8 @@ void *send_func(void *arg)
         printf("CLIENT EXAMPLE!\n");
         printf("1. Login\n");
         printf("2. Register\n");
-        printf("3. Exit\n");
+        printf("3. Create room\n");
+        printf("10. Exit\n");
         printf("Your choice: ");
         int choice;
         scanf("%d", &choice);
@@ -92,7 +102,11 @@ void *send_func(void *arg)
             register_func(client_socket);
             break;
         case 3:
+            create_room(client_socket);
+            break;
+        case 10:
             logout_func(client_socket);
+
         default:
             break;
         }
@@ -117,26 +131,42 @@ void *receive_func(void *arg)
         struct json_object *jtype;
         json_object_object_get_ex(parsed_json, "type", &jtype);
         int type = json_object_get_int(jtype);
+        struct json_object *jstatus;
         switch (type)
         {
         case LOGIN:
-            is_login = 1;
-            //get user_id, username, score
-            struct json_object *juser_id;
-            struct json_object *jusername;
-            struct json_object *jscore;
-            json_object_object_get_ex(parsed_json, "user_id", &juser_id);
-            json_object_object_get_ex(parsed_json, "username", &jusername);
-            json_object_object_get_ex(parsed_json, "score", &jscore);
-            USER_ID = json_object_get_int(juser_id);
-            strcpy(USERNAME, json_object_get_string(jusername));
-            SCORE = json_object_get_int(jscore);
+            json_object_object_get_ex(parsed_json, "status", &jstatus);
+            int status = json_object_get_int(jstatus);
+            if (status == 1)
+            {
+                // login success
+                is_login = 1;
+                struct json_object *jusername;
+                json_object_object_get_ex(parsed_json, "username", &jusername);
+                strcpy(USERNAME, json_object_get_string(jusername));
+                struct json_object *juser_id;
+                json_object_object_get_ex(parsed_json, "user_id", &juser_id);
+                USER_ID = json_object_get_int(juser_id);
+                struct json_object *jscore;
+                json_object_object_get_ex(parsed_json, "score", &jscore);
+                SCORE = json_object_get_int(jscore);
+            }
+            else
+            {
+                // login failed
+                is_login = 0;
+                // print reason
+                struct json_object *jmessage;
+                json_object_object_get_ex(parsed_json, "message", &jmessage);
+                printf("%s\n", json_object_get_string(jmessage));
+            }
             break;
         case REGISTER:
 
             break;
         case LOGOUT:
             is_login = 0;
+
             break;
         }
         memset(buffer, 0, BUFFER_SIZE);

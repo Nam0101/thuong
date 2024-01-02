@@ -37,7 +37,7 @@ void handleLogin(int client_socket, struct json_object *parsed_json)
     struct json_object *jpassword;
     json_object_object_get_ex(parsed_json, "username", &jusername);
     json_object_object_get_ex(parsed_json, "password", &jpassword);
-    const char *username = json_object_get_string(jusername);
+    const char *inputUsername = json_object_get_string(jusername);
     const char *password = json_object_get_string(jpassword);
     // query database
     sqlite3 *db = openDatabase();
@@ -56,65 +56,83 @@ void handleLogin(int client_socket, struct json_object *parsed_json)
     {
         printf("Cannot prepare statement: %s\n", sqlite3_errmsg(db));
         sendResponse(client_socket, LOGIN, 0, "SERVER ERROR");
+        sqlite3_finalize(stmt); // Finalize the prepared statement
         closeDatabase(db);
         return;
     }
-    sqlite3_bind_text(stmt, 1, username, strlen(username), SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 1, inputUsername, strlen(inputUsername), SQLITE_STATIC);
     sqlite3_bind_text(stmt, 2, hashed_password, strlen(hashed_password), SQLITE_STATIC);
     rc = sqlite3_step(stmt);
     if (rc == SQLITE_ROW)
     {
-        printf("user id: %d\n", sqlite3_column_int(stmt, 0));
-        printf("username: %s\n", sqlite3_column_text(stmt, 1));
-        printf("password: %s\n", sqlite3_column_text(stmt, 2));
-        printf("score: %d\n", sqlite3_column_int(stmt, 3));
-        printf("status: %d\n", sqlite3_column_int(stmt, 4));
-        if (sqlite3_column_int(stmt, 4) == 1)
-        {
-            sendResponse(client_socket, LOGIN, 0, "ACCOUNT ALREADY LOGGED IN");
-            closeDatabase(db);
-            return;
-        }
-        sql = "UPDATE user SET status = 1 WHERE username = ?";
-        rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
-        if (rc != SQLITE_OK)
-        {
-            printf("Cannot prepare statement: %s\n", sqlite3_errmsg(db));
-            sendResponse(client_socket, LOGIN, 0, "SERVER ERROR");
-            closeDatabase(db);
-            return;
-        }
-        sqlite3_bind_text(stmt, 1, username, strlen(username), SQLITE_STATIC);
-        rc = sqlite3_step(stmt);
-        if (rc != SQLITE_DONE)
-        {
-            printf("Cannot step statement: %s\n", sqlite3_errmsg(db));
-            sendResponse(client_socket, LOGIN, 0, "SERVER ERROR");
-            closeDatabase(db);
-            return;
-        }
-        char username[50];
+        char loggedInUsername[50];
         int score;
         int user_id;
-        strcpy(username, sqlite3_column_text(stmt, 1));
+        strcpy(loggedInUsername, sqlite3_column_text(stmt, 1));
         score = sqlite3_column_int(stmt, 3);
         user_id = sqlite3_column_int(stmt, 0);
+        if (sqlite3_column_int(stmt, 4) == 1)
+        {
+            printf("USER ALREADY LOGGED IN\n");
+            struct json_object *jobj = json_object_new_object();
+            json_object_object_add(jobj, "type", json_object_new_int(LOGIN));
+            json_object_object_add(jobj, "status", json_object_new_int(0));
+            json_object_object_add(jobj, "message", json_object_new_string("USER ALREADY LOGGED IN"));
+            const char *json_string = json_object_to_json_string(jobj);
+            send(client_socket, json_string, strlen(json_string), 0);
+            sqlite3_finalize(stmt); // Finalize the prepared statement
+            closeDatabase(db);
+            return;
+        }
         struct json_object *jobj = json_object_new_object();
         json_object_object_add(jobj, "type", json_object_new_int(LOGIN));
         json_object_object_add(jobj, "status", json_object_new_int(1));
         json_object_object_add(jobj, "message", json_object_new_string("LOGIN SUCCESS"));
         json_object_object_add(jobj, "user_id", json_object_new_int(user_id));
-        json_object_object_add(jobj, "username", json_object_new_string(username));
+        json_object_object_add(jobj, "username", json_object_new_string(loggedInUsername));
         json_object_object_add(jobj, "score", json_object_new_int(score));
         const char *json_string = json_object_to_json_string(jobj);
-        printf("%s\n", json_string);
         send(client_socket, json_string, strlen(json_string), 0);
+        sql = "UPDATE user SET status = 1 WHERE username = ?";
+        rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+        if (rc != SQLITE_OK)
+        {
+            printf("Cannot prepare statement: %s\n", sqlite3_errmsg(db));
+            sqlite3_finalize(stmt); // Finalize the prepared statement
+
+            closeDatabase(db);
+            return;
+        }
+        sqlite3_bind_text(stmt, 1, inputUsername, strlen(inputUsername), SQLITE_STATIC);
+        rc = sqlite3_step(stmt);
+        if (rc != SQLITE_DONE)
+        {
+            printf("Cannot step statement: %s\n", sqlite3_errmsg(db));
+            sqlite3_finalize(stmt); // Finalize the prepared statement
+
+            closeDatabase(db);
+            return;
+        }
+        sqlite3_finalize(stmt); // Finalize the prepared statement
         closeDatabase(db);
         return;
     }
-    sendResponse(client_socket, LOGIN, 0, "LOGIN FAILED USERNAME OR PASSWORD INCORRECT");
+    else
+    {
+        struct json_object *jobj = json_object_new_object();
+        json_object_object_add(jobj, "type", json_object_new_int(LOGIN));
+        json_object_object_add(jobj, "status", json_object_new_int(0));
+        json_object_object_add(jobj, "message", json_object_new_string("LOGIN FAILED"));
+        const char *json_string = json_object_to_json_string(jobj);
+        send(client_socket, json_string, strlen(json_string), 0);
+        sqlite3_finalize(stmt); // Finalize the prepared statement
+        closeDatabase(db);
+        return;
+    }
+    sqlite3_finalize(stmt); // Finalize the prepared statement
     closeDatabase(db);
 }
+
 struct json_object *createResponseObject(int type, int status, const char *message)
 {
     struct json_object *jobj = json_object_new_object();
@@ -141,10 +159,6 @@ void handleRegister(int client_socket, struct json_object *parsed_json)
 
     const char *username = json_object_get_string(jusername);
     const char *password = json_object_get_string(jpassword);
-
-    printf("Username: %s\n", username);
-    printf("Password: %s\n", password);
-
     char hashed_password[65];
     sha256(password, hashed_password);
 
@@ -164,7 +178,9 @@ void handleRegister(int client_socket, struct json_object *parsed_json)
     if (rc != SQLITE_OK)
     {
         printf("Cannot prepare statement: %s\n", sqlite3_errmsg(db));
-        sendResponse(client_socket, REGISTER, 0, "SERVER ERROR");
+        struct json_object *jobj = createResponseObject(REGISTER, 0, "SERVER ERROR");
+        const char *json_string = json_object_to_json_string(jobj);
+        send(client_socket, json_string, strlen(json_string), 0);
         closeDatabase(db);
         return;
     }
@@ -173,7 +189,9 @@ void handleRegister(int client_socket, struct json_object *parsed_json)
     rc = sqlite3_step(stmt);
     if (rc == SQLITE_ROW)
     {
-        sendResponse(client_socket, REGISTER, 0, "USERNAME EXISTS");
+        struct json_object *jobj = createResponseObject(REGISTER, 0, "USERNAME ALREADY EXISTS");
+        const char *json_string = json_object_to_json_string(jobj);
+        send(client_socket, json_string, strlen(json_string), 0);
         closeDatabase(db);
         return;
     }

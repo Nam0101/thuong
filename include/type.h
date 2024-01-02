@@ -5,5 +5,6 @@ typedef enum
     LOGIN,
     REGISTER,
     LOGOUT,
+    CREATE_ROOM,
 } type;
 #endif // TYPE_H
