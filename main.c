@@ -70,6 +70,8 @@ void *handleClient(void *arg)
             break;
         case JOIN_ROOM:
             handleJoinRoom(client_socket, parsed_json);
+        case GET_ROOM_LIST:
+            handleGetRoomList(client_socket, parsed_json);
             break;
         default:
             break;
