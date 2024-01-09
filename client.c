@@ -80,6 +80,21 @@ void create_room(int client_socket)
     const char *json_string = json_object_to_json_string(jobj);
     send(client_socket, json_string, strlen(json_string), 0);
 }
+void join_room(int client_socket)
+{
+    struct json_object *jobj = json_object_new_object();
+    struct json_object *jtype = json_object_new_int(JOIN_ROOM);
+    json_object_object_add(jobj, "type", jtype);
+    json_object_object_add(jobj, "user_id", json_object_new_int(USER_ID));
+    printf("Room id: ");
+    int room_id;
+    scanf("%d", &room_id);
+    json_object_object_add(jobj, "room_id", json_object_new_int(room_id));
+    const char *json_string = json_object_to_json_string(jobj);
+    send(client_socket, json_string, strlen(json_string), 0);
+    printf("%s\n", json_string);
+
+}
 void *send_func(void *arg)
 {
     int client_socket = *(int *)arg;
@@ -89,6 +104,7 @@ void *send_func(void *arg)
         printf("1. Login\n");
         printf("2. Register\n");
         printf("3. Create room\n");
+        printf("4. Join room\n");
         printf("10. Exit\n");
         printf("Your choice: ");
         int choice;
@@ -103,6 +119,9 @@ void *send_func(void *arg)
             break;
         case 3:
             create_room(client_socket);
+            break;
+        case 4:
+            join_room(client_socket);
             break;
         case 10:
             logout_func(client_socket);

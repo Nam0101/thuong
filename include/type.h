@@ -6,5 +6,6 @@ typedef enum
     REGISTER,
     LOGOUT,
     CREATE_ROOM,
+    JOIN_ROOM,
 } type;
 #endif // TYPE_H

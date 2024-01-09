@@ -68,6 +68,9 @@ void *handleClient(void *arg)
         case CREATE_ROOM:
             handleCreateRoom(client_socket, parsed_json);
             break;
+        case JOIN_ROOM:
+            handleJoinRoom(client_socket, parsed_json);
+            break;
         default:
             break;
         }

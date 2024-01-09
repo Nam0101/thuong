@@ -15,6 +15,92 @@
 #include "authentication.h"
 #include "dbconn.h"
 #define DEFAULT_SCORE 1000
+user *userList = NULL;
+pthread_mutex_t userListMutex = PTHREAD_MUTEX_INITIALIZER;
+void addUser(user *newUser)
+{
+    pthread_mutex_lock(&userListMutex);
+    if (userList == NULL)
+    {
+        userList = newUser;
+        pthread_mutex_unlock(&userListMutex);
+        return;
+    }
+    user *tmp = userList;
+    while (tmp->next != NULL)
+    {
+        tmp = tmp->next;
+    }
+    tmp->next = newUser;
+    pthread_mutex_unlock(&userListMutex);
+}
+void removeUser(int userId)
+{
+    pthread_mutex_lock(&userListMutex);
+    if (userList == NULL)
+    {
+        pthread_mutex_unlock(&userListMutex);
+        return;
+    }
+    if (userList->user_id == userId)
+    {
+        user *tmp = userList;
+        userList = userList->next;
+        free(tmp);
+        pthread_mutex_unlock(&userListMutex);
+        return;
+    }
+    user *tmp = userList;
+    while (tmp->next != NULL)
+    {
+        if (tmp->next->user_id == userId)
+        {
+            user *tmp2 = tmp->next;
+            tmp->next = tmp->next->next;
+            free(tmp2);
+            break;
+        }
+        tmp = tmp->next;
+    }
+    pthread_mutex_unlock(&userListMutex);
+}
+user *createUser(int user_id, int status, const char *username, int score, int socket)
+{
+    user *newUser = (user *)malloc(sizeof(user));
+    newUser->user_id = user_id;
+    newUser->status = status;
+    strcpy(newUser->username, username);
+    newUser->score = score;
+    newUser->next = NULL;
+    newUser->socket = socket;
+    return newUser;
+}
+user *getListUser()
+{
+    return userList;
+}
+user *getUserByID(int user_id)
+{
+    user *tmp = userList;
+    while (tmp != NULL)
+    {
+        if (tmp->user_id == user_id)
+        {
+            return tmp;
+        }
+        tmp = tmp->next;
+    }
+    return NULL;
+}
+void printListUser()
+{
+    user *tmp = userList;
+    while (tmp != NULL)
+    {
+        printf("%d %d %s %d\n", tmp->user_id, tmp->status, tmp->username, tmp->score);
+        tmp = tmp->next;
+    }
+}
 void sha256(const char *input, char outputBuffer[65])
 {
     unsigned char hash[SHA256_DIGEST_LENGTH];
@@ -32,7 +118,7 @@ void sha256(const char *input, char outputBuffer[65])
 }
 void handleLogin(int client_socket, struct json_object *parsed_json)
 {
-    printf("LOGIN\n");
+    printListUser();
     struct json_object *jusername;
     struct json_object *jpassword;
     json_object_object_get_ex(parsed_json, "username", &jusername);
@@ -71,19 +157,6 @@ void handleLogin(int client_socket, struct json_object *parsed_json)
         strcpy(loggedInUsername, sqlite3_column_text(stmt, 1));
         score = sqlite3_column_int(stmt, 3);
         user_id = sqlite3_column_int(stmt, 0);
-        if (sqlite3_column_int(stmt, 4) == 1)
-        {
-            printf("USER ALREADY LOGGED IN\n");
-            struct json_object *jobj = json_object_new_object();
-            json_object_object_add(jobj, "type", json_object_new_int(LOGIN));
-            json_object_object_add(jobj, "status", json_object_new_int(0));
-            json_object_object_add(jobj, "message", json_object_new_string("USER ALREADY LOGGED IN"));
-            const char *json_string = json_object_to_json_string(jobj);
-            send(client_socket, json_string, strlen(json_string), 0);
-            sqlite3_finalize(stmt); // Finalize the prepared statement
-            closeDatabase(db);
-            return;
-        }
         struct json_object *jobj = json_object_new_object();
         json_object_object_add(jobj, "type", json_object_new_int(LOGIN));
         json_object_object_add(jobj, "status", json_object_new_int(1));
@@ -93,27 +166,22 @@ void handleLogin(int client_socket, struct json_object *parsed_json)
         json_object_object_add(jobj, "score", json_object_new_int(score));
         const char *json_string = json_object_to_json_string(jobj);
         send(client_socket, json_string, strlen(json_string), 0);
-        sql = "UPDATE user SET status = 1 WHERE username = ?";
-        rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
-        if (rc != SQLITE_OK)
-        {
-            printf("Cannot prepare statement: %s\n", sqlite3_errmsg(db));
-            sqlite3_finalize(stmt); // Finalize the prepared statement
-
+        user *newUser = (user *)malloc(sizeof(user));
+        newUser->user_id = user_id;
+        newUser->status = 1;
+        strcpy(newUser->username, loggedInUsername);
+        newUser->score = score;
+        newUser->next = NULL;
+        newUser->socket = client_socket;
+        addUser(newUser);
+        printListUser();
+        if(newUser == NULL){
+            printf("Cannot create user\n");
+            sqlite3_finalize(stmt); 
             closeDatabase(db);
             return;
         }
-        sqlite3_bind_text(stmt, 1, inputUsername, strlen(inputUsername), SQLITE_STATIC);
-        rc = sqlite3_step(stmt);
-        if (rc != SQLITE_DONE)
-        {
-            printf("Cannot step statement: %s\n", sqlite3_errmsg(db));
-            sqlite3_finalize(stmt); // Finalize the prepared statement
-
-            closeDatabase(db);
-            return;
-        }
-        sqlite3_finalize(stmt); // Finalize the prepared statement
+        sqlite3_finalize(stmt); 
         closeDatabase(db);
         return;
     }
@@ -125,14 +193,13 @@ void handleLogin(int client_socket, struct json_object *parsed_json)
         json_object_object_add(jobj, "message", json_object_new_string("LOGIN FAILED"));
         const char *json_string = json_object_to_json_string(jobj);
         send(client_socket, json_string, strlen(json_string), 0);
-        sqlite3_finalize(stmt); // Finalize the prepared statement
+        sqlite3_finalize(stmt); 
         closeDatabase(db);
         return;
     }
-    sqlite3_finalize(stmt); // Finalize the prepared statement
+    sqlite3_finalize(stmt); 
     closeDatabase(db);
 }
-
 struct json_object *createResponseObject(int type, int status, const char *message)
 {
     struct json_object *jobj = json_object_new_object();
@@ -197,7 +264,7 @@ void handleRegister(int client_socket, struct json_object *parsed_json)
     }
 
     // insert new user
-    sql = "INSERT INTO user (username, password,score,status) VALUES (?, ?,?,0)";
+    sql = "INSERT INTO user (username, password,score) VALUES (?, ?,?)";
     rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK)
     {
@@ -223,37 +290,10 @@ void handleRegister(int client_socket, struct json_object *parsed_json)
 }
 void handleLogout(int client_socket, struct json_object *parsed_json)
 {
-    printf("LOGOUT\n");
-    struct json_object *juserid;
-    // get userid
-    json_object_object_get_ex(parsed_json, "user_id", &juserid);
-    int user_id = json_object_get_int(juserid);
-
-    // query database
-    sqlite3 *db = openDatabase();
-    if (db == NULL)
-    {
-        printf("Cannot open database\n");
-        sendResponse(client_socket, LOGOUT, 0, "SERVER ERROR");
-        return;
-    }
-    sqlite3_stmt *stmt;
-    char *sql = "UPDATE user SET status = 0 WHERE id = ?";
-    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
-    if (rc != SQLITE_OK)
-    {
-        printf("Cannot prepare statement: %s\n", sqlite3_errmsg(db));
-        sendResponse(client_socket, LOGOUT, 0, "SERVER ERROR");
-        closeDatabase(db);
-        return;
-    }
-    sqlite3_bind_int(stmt, 1, user_id);
-    rc = sqlite3_step(stmt);
-    if (rc != SQLITE_DONE)
-    {
-        printf("Cannot step statement: %s\n", sqlite3_errmsg(db));
-        closeDatabase(db);
-        return;
-    }
-    printf("LOGOUT SUCCESS\n");
+    struct json_object *juser_id;
+    json_object_object_get_ex(parsed_json, "user_id", &juser_id);
+    int user_id = json_object_get_int(juser_id);
+    printListUser();
+    removeUser(user_id);
+    printListUser();
 }
