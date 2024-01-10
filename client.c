@@ -242,9 +242,9 @@ void get_list_online_user(int client_socket)
     struct json_object *jtype = json_object_new_int(GET_LIST_ONLINE_USER);
     json_object_object_add(jobj, "type", jtype);
     json_object_object_add(jobj, "user_id", json_object_new_int(USER_ID));
-    //score
     json_object_object_add(jobj, "score", json_object_new_int(SCORE));
     const char *json_string = json_object_to_json_string(jobj);
+    printf("%s\n", json_string);
     send(client_socket, json_string, strlen(json_string), 0);
 }
 void *send_func(void *arg)
@@ -269,6 +269,7 @@ void *send_func(void *arg)
         printf("14. Get history\n");
         printf("15. CHALLENGE\n");
         printf("16. Notifi challenge\n");
+        printf("17. Get list online user\n");
         printf("Your choice: ");
         int choice;
         scanf("%d", &choice);

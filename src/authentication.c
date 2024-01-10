@@ -314,7 +314,7 @@ void handleLogout(int client_socket, struct json_object *parsed_json)
 void handleGetListOnlineUser(int clientSocket, struct json_object *parsedJson)
 {
     int user_id = json_object_get_int(json_object_object_get(parsedJson, "user_id"));
-    int user_score = json_object_get_int(json_object_object_get(parsedJson, "user_score"));
+    int user_score = json_object_get_int(json_object_object_get(parsedJson, "score"));
     user *tmp = userList;
     json_object *jarray = json_object_new_array();
     while (tmp != NULL)
