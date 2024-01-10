@@ -245,9 +245,8 @@ void handleJoinRoom(int clientSocket, struct json_object *parsedJson)
     json_object_object_add(jobj, "black_user", jblackUser);
     json_string = json_object_to_json_string(jobj);
     send(current_room->white_user->socket, json_string, strlen(json_string), 0);
-    // start game on db
     updateStartGame(current_room);
-    
+
 }
 void handleLeaveRoom(int client_socket, struct json_object *parsedJson)
 {

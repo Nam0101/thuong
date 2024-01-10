@@ -236,6 +236,17 @@ void notifi_challenge(int client_socket)
     const char *json_string = json_object_to_json_string(jobj);
     send(client_socket, json_string, strlen(json_string), 0);
 }
+void get_list_online_user(int client_socket)
+{
+    struct json_object *jobj = json_object_new_object();
+    struct json_object *jtype = json_object_new_int(GET_LIST_ONLINE_USER);
+    json_object_object_add(jobj, "type", jtype);
+    json_object_object_add(jobj, "user_id", json_object_new_int(USER_ID));
+    //score
+    json_object_object_add(jobj, "score", json_object_new_int(SCORE));
+    const char *json_string = json_object_to_json_string(jobj);
+    send(client_socket, json_string, strlen(json_string), 0);
+}
 void *send_func(void *arg)
 {
     int client_socket = *(int *)arg;
