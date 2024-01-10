@@ -14,6 +14,7 @@
 #include <sqlite3.h>
 #include "authentication.h"
 #include <pthread.h>
+#include <time.h>
 room *roomList = NULL;
 pthread_mutex_t roomListMutex = PTHREAD_MUTEX_INITIALIZER;
 void addRoom(room *newRoom)
@@ -214,18 +215,24 @@ void handleJoinRoom(int clientSocket, struct json_object *parsedJson)
         sendResponse(clientSocket, JOIN_ROOM, 0, "SERVER ERROR");
         return;
     }
-    // send infomation of white user to black user
+    if (current_room->white_user == NULL)
+    {
+        addWhiteUser(roomId, blackUser);
+    }
+    else
+    {
+        addBlackUser(roomId, blackUser);
+    }
     struct json_object *jwhiteUser = json_object_new_object();
     json_object_object_add(jwhiteUser, "username", json_object_new_string(current_room->white_user->username));
     json_object_object_add(jwhiteUser, "user_id", json_object_new_int(current_room->white_user->user_id));
     struct json_object *jobj = json_object_new_object();
     json_object_object_add(jobj, "type", json_object_new_int(JOIN_ROOM));
-    addBlackUser(current_room->room_id, blackUser);
     json_object_object_add(jobj, "status", json_object_new_int(1));
     json_object_object_add(jobj, "white_user", jwhiteUser);
     const char *json_string = json_object_to_json_string(jobj);
-    send(clientSocket, json_string, strlen(json_string), 0);
-    // send infomation of black user to white user
+    send(current_room->black_user->socket, json_string, strlen(json_string), 0);
+
     struct json_object *jblackUser = json_object_new_object();
     json_object_object_add(jblackUser, "username", json_object_new_string(current_room->black_user->username));
     json_object_object_add(jblackUser, "user_id", json_object_new_int(current_room->black_user->user_id));
@@ -235,6 +242,56 @@ void handleJoinRoom(int clientSocket, struct json_object *parsedJson)
     json_object_object_add(jobj, "black_user", jblackUser);
     json_string = json_object_to_json_string(jobj);
     send(current_room->white_user->socket, json_string, strlen(json_string), 0);
+}
+void handleLeaveRoom(int client_socket, struct json_object *parsedJson)
+{
+    int roomId, userId;
+    struct json_object *jroomId;
+    json_object_object_get_ex(parsedJson, "room_id", &jroomId);
+    roomId = json_object_get_int(jroomId);
+    struct json_object *juserId;
+    json_object_object_get_ex(parsedJson, "user_id", &juserId);
+    userId = json_object_get_int(juserId);
+    room *current_room = getRoomById(roomId);
+    if (current_room == NULL)
+    {
+        sendResponse(client_socket, OUT_ROOM, 0, "Room not found");
+        return;
+    }
+    if(current_room->white_user->user_id == userId){
+        current_room->white_user = NULL;
+    }else if(current_room->black_user->user_id == userId){
+        current_room->black_user = NULL;
+    }else{
+        sendResponse(client_socket, OUT_ROOM, 0, "User not found");
+        return;
+    }
+    if(current_room->white_user == NULL && current_room->black_user == NULL){
+        removeRoom(roomId);
+    }
+    if(current_room->white_user != NULL){
+        //send message to white user that black user leave room
+        struct json_object *jobj = json_object_new_object();
+        json_object_object_add(jobj, "type", json_object_new_int(OUT_ROOM));
+        json_object_object_add(jobj, "status", json_object_new_int(1));
+        json_object_object_add(jobj, "message", json_object_new_string("Black user leave room"));
+        const char *json_string = json_object_to_json_string(jobj);
+        send(current_room->white_user->socket, json_string, strlen(json_string), 0);
+    }
+    if(current_room->black_user != NULL){
+        //send message to black user that white user leave room
+        struct json_object *jobj = json_object_new_object();
+        json_object_object_add(jobj, "type", json_object_new_int(OUT_ROOM));
+        json_object_object_add(jobj, "status", json_object_new_int(1));
+        json_object_object_add(jobj, "message", json_object_new_string("White user leave room"));
+        const char *json_string = json_object_to_json_string(jobj);
+        send(current_room->black_user->socket, json_string, strlen(json_string), 0);
+    }
+    current_room->status = 0;
+    sendResponse(client_socket, OUT_ROOM, 1, "Leave room success");
+
+    
+
 }
 void handleGetRoomList(int clientSocket, struct json_object *parsedJson)
 {   
@@ -288,6 +345,66 @@ void handleMove(int clientSocket, struct json_object *parsedJson){
         send(current_room->black_user->socket, json_object_to_json_string(parsedJson), strlen(json_object_to_json_string(parsedJson)), 0);
     }else{
         sendResponse(clientSocket, MOVE, 0, "User not found");
+        return;
+    }
+}
+void updateStartGame(room* room){
+    int roomId = room->room_id;
+    int white_id = room->white_user->user_id;
+    int black_id = room->black_user->user_id;
+    //get current time
+    time_t rawtime;
+    struct tm * timeinfo;
+    time ( &rawtime );
+    timeinfo = localtime ( &rawtime );
+    char *time = asctime(timeinfo);
+    time[strlen(time)-1] = '\0';
+    //update on db
+    sqlite3 *db = openDatabase();
+    char *sql = "UPDATE game SET status = 1, time_start = ?, black_id = ?, white_id = ? WHERE id = ?";
+    sqlite3_stmt *stmt;
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if(rc != SQLITE_OK){
+        printf("Cannot prepare statement: %s\n", sqlite3_errmsg(db));
+        closeDatabase(db);
+        return;
+    }
+    sqlite3_bind_text(stmt, 1, time, -1, SQLITE_STATIC);
+    sqlite3_bind_int(stmt, 2, black_id);
+    sqlite3_bind_int(stmt, 3, white_id);
+    sqlite3_bind_int(stmt, 4, roomId);
+    rc = sqlite3_step(stmt);
+    if(rc != SQLITE_DONE){
+        printf("Cannot step statement: %s\n", sqlite3_errmsg(db));
+        closeDatabase(db);
+        return;
+    }
+    closeDatabase(db);
+
+
+
+}
+void handleStartGame(int clientSocket, struct json_object *parsedJson){
+    int roomId;
+    struct json_object *jroomId;
+    json_object_object_get_ex(parsedJson, "room_id", &jroomId);
+    roomId = json_object_get_int(jroomId);
+    room *current_room = getRoomById(roomId);
+    if(current_room == NULL){
+        sendResponse(clientSocket, START_GAME, 0, "Room not found");
+        return;
+    }
+    //update on db
+    updateStartGame(current_room);
+    struct json_object *juserId;
+    json_object_object_get_ex(parsedJson, "user_id", &juserId);
+    int userId = json_object_get_int(juserId);
+    if(current_room->black_user->user_id == userId){
+        send(current_room->white_user->socket, json_object_to_json_string(parsedJson), strlen(json_object_to_json_string(parsedJson)), 0);
+    }else if(current_room->white_user->user_id == userId){
+        send(current_room->black_user->socket, json_object_to_json_string(parsedJson), strlen(json_object_to_json_string(parsedJson)), 0);
+    }else{
+        sendResponse(clientSocket, START_GAME, 0, "Room is not enough player");
         return;
     }
 }

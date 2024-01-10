@@ -71,6 +71,10 @@ void *handleClient(void *arg)
             break;
         case JOIN_ROOM:
             handleJoinRoom(client_socket, parsed_json);
+            break;
+        case OUT_ROOM:
+            handleLeaveRoom(client_socket, parsed_json);
+            break;
         case GET_ROOM_LIST:
             handleGetRoomList(client_socket, parsed_json);
             break;
@@ -80,6 +84,10 @@ void *handleClient(void *arg)
         case MOVE:
             handleMove(client_socket, parsed_json);
             break;
+        case START_GAME:
+            handleStartGame(client_socket, parsed_json);
+            break;
+        
         default:
             break;
         }

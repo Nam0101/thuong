@@ -12,6 +12,16 @@ sqlite3 *openDatabase()
         sqlite3_close(db); 
         return NULL;
     }
+    //open on WAL mode
+    char *zErrMsg = 0;
+    rc = sqlite3_exec(db, "PRAGMA journal_mode=WAL;", NULL, NULL, &zErrMsg);
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "SQL error: %s\n", zErrMsg);
+        sqlite3_free(zErrMsg);
+        sqlite3_close(db); 
+        return NULL;
+    }
     return db;
 }
 

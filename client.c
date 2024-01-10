@@ -103,7 +103,8 @@ void get_room_list(int client_socket)
     const char *json_string = json_object_to_json_string(jobj);
     send(client_socket, json_string, strlen(json_string), 0);
 }
-void get_top_score(int client_socket){
+void get_top_score(int client_socket)
+{
     struct json_object *jobj = json_object_new_object();
     struct json_object *jtype = json_object_new_int(GET_TOP_SCORE);
     json_object_object_add(jobj, "type", jtype);
@@ -111,7 +112,8 @@ void get_top_score(int client_socket){
     const char *json_string = json_object_to_json_string(jobj);
     send(client_socket, json_string, strlen(json_string), 0);
 }
-void move(int client_socket){
+void move(int client_socket)
+{
     struct json_object *jobj = json_object_new_object();
     struct json_object *jtype = json_object_new_int(MOVE);
     json_object_object_add(jobj, "type", jtype);
@@ -131,8 +133,37 @@ void move(int client_socket){
     json_object_object_add(jobj, "y", json_object_new_int(y));
     const char *json_string = json_object_to_json_string(jobj);
     send(client_socket, json_string, strlen(json_string), 0);
+    printf("%s\n", json_string);
 }
-void *send_func(void *arg)
+void start_game(int client_socket)
+{
+    struct json_object *jobj = json_object_new_object();
+    struct json_object *jtype = json_object_new_int(START_GAME);
+    json_object_object_add(jobj, "type", jtype);
+    json_object_object_add(jobj, "user_id", json_object_new_int(USER_ID));
+    printf("Room id: "); // room đang chơi
+    int room_id;
+    scanf("%d", &room_id);
+    json_object_object_add(jobj, "room_id", json_object_new_int(room_id));
+    const char *json_string = json_object_to_json_string(jobj);
+    send(client_socket, json_string, strlen(json_string), 0);
+}
+void out_room(int client_socket)
+{
+    struct json_object *jobj = json_object_new_object();
+    struct json_object *jtype = json_object_new_int(OUT_ROOM);
+    json_object_object_add(jobj, "type", jtype);
+    json_object_object_add(jobj, "user_id", json_object_new_int(USER_ID));
+    printf("Room id: "); // room đang chơi
+    int room_id;
+    scanf("%d", &room_id);
+    json_object_object_add(jobj, "room_id", json_object_new_int(room_id));
+    const char *json_string = json_object_to_json_string(jobj);
+    send(client_socket, json_string, strlen(json_string), 0);
+}
+
+void *
+send_func(void *arg)
 {
     int client_socket = *(int *)arg;
     while (1)
@@ -144,6 +175,9 @@ void *send_func(void *arg)
         printf("4. Join room\n");
         printf("5. Get room list\n");
         printf("6. Get top score\n");
+        printf("7. Move\n");
+        printf("8. Start game\n");
+        printf("9. Out room\n");
         printf("10. Exit\n");
         printf("Your choice: ");
         int choice;
@@ -170,6 +204,13 @@ void *send_func(void *arg)
             break;
         case 7:
             move(client_socket);
+            break;
+        case 8:
+            start_game(client_socket);
+            break;
+        case 9:
+            out_room(client_socket);
+            break;
         case 10:
             logout_func(client_socket);
 
