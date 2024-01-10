@@ -189,7 +189,6 @@ void handleCreateRoom(int clientSocket, struct json_object *parsedJson)
 }
 void handleJoinRoom(int clientSocket, struct json_object *parsedJson)
 {
-    printf("%s\n", json_object_to_json_string(parsedJson));
     int roomId;
     struct json_object *jroomId;
     json_object_object_get_ex(parsedJson, "room_id", &jroomId);
@@ -239,7 +238,6 @@ void handleJoinRoom(int clientSocket, struct json_object *parsedJson)
 }
 void handleGetRoomList(int clientSocket, struct json_object *parsedJson)
 {   
-    printf("%s\n", json_object_to_json_string(parsedJson));
     struct json_object *jobj = json_object_new_object();
     json_object_object_add(jobj, "type", json_object_new_int(GET_ROOM_LIST));
     json_object_object_add(jobj, "status", json_object_new_int(1));
@@ -268,7 +266,28 @@ void handleGetRoomList(int clientSocket, struct json_object *parsedJson)
     }
     pthread_mutex_unlock(&roomListMutex);
     const char *json_string = json_object_to_json_string(jobj);
-    printf("%s\n", json_string);
     send(clientSocket, json_string, strlen(json_string), 0);
-
+}
+void handleMove(int clientSocket, struct json_object *parsedJson){
+    printf("%s\n", json_object_to_json_string(parsedJson));
+    int roomId;
+    struct json_object *jroomId;
+    json_object_object_get_ex(parsedJson, "room_id", &jroomId);
+    roomId = json_object_get_int(jroomId);
+    room *current_room = getRoomById(roomId);
+    if(current_room == NULL){
+        sendResponse(clientSocket, MOVE, 0, "Room not found");
+        return;
+    }
+    struct json_object *juserId;
+    json_object_object_get_ex(parsedJson, "user_id", &juserId);
+    int userId = json_object_get_int(juserId);
+    if(current_room->black_user->user_id == userId){
+        send(current_room->white_user->socket, json_object_to_json_string(parsedJson), strlen(json_object_to_json_string(parsedJson)), 0);
+    }else if(current_room->white_user->user_id == userId){
+        send(current_room->black_user->socket, json_object_to_json_string(parsedJson), strlen(json_object_to_json_string(parsedJson)), 0);
+    }else{
+        sendResponse(clientSocket, MOVE, 0, "User not found");
+        return;
+    }
 }

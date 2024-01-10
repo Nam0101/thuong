@@ -77,6 +77,9 @@ void *handleClient(void *arg)
         case GET_TOP_SCORE:
             handleGetTopScore(client_socket, parsed_json);
             break;
+        case MOVE:
+            handleMove(client_socket, parsed_json);
+            break;
         default:
             break;
         }

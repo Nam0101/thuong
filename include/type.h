@@ -8,6 +8,9 @@ typedef enum
     CREATE_ROOM,
     JOIN_ROOM,
     GET_ROOM_LIST,
-    GET_TOP_SCORE
+    GET_TOP_SCORE,
+    MOVE,
+    SURRENDER,
+    OUT_ROOM
 } type;
 #endif // TYPE_H
