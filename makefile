@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -I/usr/include/json-c -I./include
-LDFLAGS = -L./lib -ljson-c -lpthread -lssl -lcrypto -lsqlite3
+LDFLAGS = -L./lib -ljson-c -lpthread -lssl -lcrypto -lsqlite3 -lm
 
 SERVER_SOURCES = main.c
 CLIENT_SOURCES = client.c

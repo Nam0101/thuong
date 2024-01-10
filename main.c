@@ -31,8 +31,6 @@ void *handleClient(void *arg)
     struct ThreadArgs *threadArgs = (struct ThreadArgs *)arg;
     int client_socket = threadArgs->client_socket;
 
-    // Now you have a local copy of client_socket for each thread
-
     char *buffer = (char *)malloc(BUFFER_SIZE);
     memset(buffer, 0, BUFFER_SIZE);
 
@@ -87,7 +85,9 @@ void *handleClient(void *arg)
         case START_GAME:
             handleStartGame(client_socket, parsed_json);
             break;
-        
+        case END_GAME:
+            handleEndGame(client_socket, parsed_json);
+            break;
         default:
             break;
         }
@@ -142,11 +142,9 @@ int main()
 
         printf("New connection from %s:%d\n", inet_ntoa(client_address.sin_addr), ntohs(client_address.sin_port));
 
-        // Allocate memory for the thread argument
         struct ThreadArgs *threadArgs = (struct ThreadArgs *)malloc(sizeof(struct ThreadArgs));
         threadArgs->client_socket = client_socket;
 
-        // Create a new thread with its own copy of client_socket
         pthread_t tid;
         pthread_create(&tid, NULL, handleClient, threadArgs);
         pthread_detach(tid);

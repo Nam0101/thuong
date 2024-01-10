@@ -15,4 +15,8 @@ void handleJoinRoom(int clientSocket, struct json_object *parsedJson);
 void handleCreateRoom(int clientSocket, struct json_object *parsedJson);
 void handleGetRoomList(int clientSocket, struct json_object *parsedJson);
 void handleMove(int clientSocket, struct json_object *parsedJson);
+void handleEndGame(int clientSocket, struct json_object *parsedJson);
+void handleJoinRoom(int clientSocket, struct json_object *parsedJson);
+void handleLeaveRoom(int clientSocket, struct json_object *parsedJson);
+void handleStartGame(int clientSocket, struct json_object *parsedJson);
 #endif

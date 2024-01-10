@@ -161,9 +161,23 @@ void out_room(int client_socket)
     const char *json_string = json_object_to_json_string(jobj);
     send(client_socket, json_string, strlen(json_string), 0);
 }
-
-void *
-send_func(void *arg)
+void end_game(int client_socket){
+    struct json_object *jobj = json_object_new_object();
+    struct json_object *jtype = json_object_new_int(END_GAME);
+    json_object_object_add(jobj, "type", jtype);
+    json_object_object_add(jobj, "user_id", json_object_new_int(USER_ID));
+    printf("Room id: "); // room đang chơi
+    int room_id;
+    scanf("%d", &room_id);
+    json_object_object_add(jobj, "room_id", json_object_new_int(room_id));
+    printf("Result: ");
+    int result;
+    scanf("%d", &result);
+    json_object_object_add(jobj, "result", json_object_new_int(result));
+    const char *json_string = json_object_to_json_string(jobj);
+    send(client_socket, json_string, strlen(json_string), 0);
+} 
+void *send_func(void *arg)
 {
     int client_socket = *(int *)arg;
     while (1)
@@ -179,6 +193,7 @@ send_func(void *arg)
         printf("8. Start game\n");
         printf("9. Out room\n");
         printf("10. Exit\n");
+        printf("11. End game\n");
         printf("Your choice: ");
         int choice;
         scanf("%d", &choice);
@@ -213,7 +228,10 @@ send_func(void *arg)
             break;
         case 10:
             logout_func(client_socket);
-
+            break;
+        case 11:
+            end_game(client_socket);
+            break;
         default:
             break;
         }

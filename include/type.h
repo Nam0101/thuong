@@ -12,6 +12,14 @@ typedef enum
     MOVE,
     SURRENDER,
     OUT_ROOM,
-    START_GAME // start game for both user, white user send this request
+    START_GAME, // start game for both user, white user send this request,
+    END_GAME, // end game for both user, both user send this request
+    UPDATE_SCORE,
+    NOTIFI_JOIN_ROOM,
 } type;
+typedef enum{
+    LOSE,
+    WIN,
+    DRAW,
+}result;
 #endif // TYPE_H
