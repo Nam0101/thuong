@@ -16,6 +16,8 @@ typedef enum
     END_GAME, // end game for both user, both user send this request
     UPDATE_SCORE,
     NOTIFI_JOIN_ROOM,
+    CHAT,
+    GET_HISTORY,
 } type;
 typedef enum{
     LOSE,

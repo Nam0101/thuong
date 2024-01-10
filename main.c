@@ -88,6 +88,15 @@ void *handleClient(void *arg)
         case END_GAME:
             handleEndGame(client_socket, parsed_json);
             break;
+        case CHAT:
+            handleChat(client_socket, parsed_json);
+            break;
+        case SURRENDER:
+            handleSurrender(client_socket, parsed_json);
+            break;
+        case GET_HISTORY:
+            handleGetHistory(client_socket, parsed_json);
+            break;
         default:
             break;
         }

@@ -122,7 +122,7 @@ room *getRoomById(int roomId)
 int insertRoom2db(int userId)
 {
     sqlite3 *db = openDatabase();
-    char *sql = "INSERT INTO game (white_id, status) VALUES (?, 0)";
+    char *sql = "INSERT INTO game (white_id) VALUES (?)";
     sqlite3_stmt *stmt;
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK)
@@ -383,7 +383,7 @@ void updateStartGame(room *room)
     time[strlen(time) - 1] = '\0';
     // update on db
     sqlite3 *db = openDatabase();
-    char *sql = "UPDATE game SET status = 1, time_start = ?, black_id = ?, white_id = ? WHERE id = ?";
+    char *sql = "UPDATE game SET time_start = ?, black_id = ?, white_id = ? WHERE id = ?";
     sqlite3_stmt *stmt;
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK)
@@ -471,19 +471,25 @@ void handleEndGame(int client_socket, struct json_object *parsedJson)
     switch (result)
     {
     case WIN:
-        if (user_id == current_room->white_user->user_id) {
+        if (user_id == current_room->white_user->user_id)
+        {
             Sa = 1;
             Sb = 0;
-        } else {
+        }
+        else
+        {
             Sa = 0;
             Sb = 1;
         }
         break;
     case LOSE:
-        if (user_id == current_room->white_user->user_id) {
+        if (user_id == current_room->white_user->user_id)
+        {
             Sa = 0;
             Sb = 1;
-        } else {
+        }
+        else
+        {
             Sa = 1;
             Sb = 0;
         }
@@ -535,18 +541,18 @@ void handleEndGame(int client_socket, struct json_object *parsedJson)
     struct json_object *jobj = json_object_new_object();
     json_object_object_add(jobj, "type", json_object_new_int(UPDATE_SCORE));
     json_object_object_add(jobj, "status", json_object_new_int(1));
-    json_object_object_add(jobj, "score", json_object_new_double(white_score));
+    json_object_object_add(jobj, "score", json_object_new_int(int_white_score));
     const char *json_string = json_object_to_json_string(jobj);
     send(current_room->white_user->socket, json_string, strlen(json_string), 0);
     // send message to black user
     jobj = json_object_new_object();
     json_object_object_add(jobj, "type", json_object_new_int(UPDATE_SCORE));
     json_object_object_add(jobj, "status", json_object_new_int(1));
-    json_object_object_add(jobj, "score", json_object_new_double(black_score));
+    json_object_object_add(jobj, "score", json_object_new_int(int_black_score));
     json_string = json_object_to_json_string(jobj);
     send(current_room->black_user->socket, json_string, strlen(json_string), 0);
 
-    //update end time and status on db
+    // update end time and status on db
     time_t rawtime;
     struct tm *timeinfo;
     time(&rawtime);
@@ -554,7 +560,7 @@ void handleEndGame(int client_socket, struct json_object *parsedJson)
     char *time = asctime(timeinfo);
     time[strlen(time) - 1] = '\0';
     db = openDatabase();
-    sql = "UPDATE game SET status = 2, time_end = ?,winner=? WHERE id = ?";
+    sql = "UPDATE game SET time_end = ?,winner=? WHERE id = ?";
     rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK)
     {
@@ -564,12 +570,16 @@ void handleEndGame(int client_socket, struct json_object *parsedJson)
     }
     sqlite3_bind_text(stmt, 1, time, -1, SQLITE_STATIC);
     int winner_id;
-    if(result == WIN){
-        winner_id = user_id;
-    }else if(result == LOSE){
+    if (result == WIN)
+    {
         winner_id = user_id;
     }
-    else{
+    else if (result == LOSE)
+    {
+        winner_id = user_id;
+    }
+    else
+    {
         winner_id = 0;
     }
     sqlite3_bind_int(stmt, 2, winner_id);
@@ -582,4 +592,48 @@ void handleEndGame(int client_socket, struct json_object *parsedJson)
         return;
     }
     closeDatabase(db);
+}
+// TODO
+void handleChat(int clientSocket, struct json_object *parsedJson)
+{
+    int user_id;
+    struct json_object *juserId;
+    json_object_object_get_ex(parsedJson, "to_user_id", &juserId);
+    user_id = json_object_get_int(juserId);
+    user *to_user = getUserByID(user_id);
+    if (to_user == NULL)
+    {
+        sendResponse(clientSocket, CHAT, 0, "User is offline");
+        return;
+    }
+    send(to_user->socket, json_object_to_json_string(parsedJson), strlen(json_object_to_json_string(parsedJson)), 0);
+}
+void handleSurrender(int clientSocket, struct json_object *parsedJson)
+{
+    int roomId;
+    struct json_object *jroomId;
+    json_object_object_get_ex(parsedJson, "room_id", &jroomId);
+    roomId = json_object_get_int(jroomId);
+    room *current_room = getRoomById(roomId);
+    if (current_room == NULL)
+    {
+        sendResponse(clientSocket, SURRENDER, 0, "Room not found");
+        return;
+    }
+    struct json_object *juserId;
+    json_object_object_get_ex(parsedJson, "user_id", &juserId);
+    int userId = json_object_get_int(juserId);
+    if (current_room->black_user->user_id == userId)
+    {
+        send(current_room->white_user->socket, json_object_to_json_string(parsedJson), strlen(json_object_to_json_string(parsedJson)), 0);
+    }
+    else if (current_room->white_user->user_id == userId)
+    {
+        send(current_room->black_user->socket, json_object_to_json_string(parsedJson), strlen(json_object_to_json_string(parsedJson)), 0);
+    }
+    else
+    {
+        sendResponse(clientSocket, SURRENDER, 0, "User not found");
+        return;
+    }
 }

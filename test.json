@@ -1,0 +1,35 @@
+{
+    "type": 15,
+    "data": [
+        {
+            "game_id": 2,
+            "white_username": "a",
+            "black_username": "b",
+            "result": "LOSS"
+        },
+        {
+            "game_id": 8,
+            "white_username": "b",
+            "black_username": "c",
+            "result": "LOSS"
+        },
+        {
+            "game_id": 10,
+            "white_username": "a",
+            "black_username": "b",
+            "result": "LOSS"
+        },
+        {
+            "game_id": 11,
+            "white_username": "a",
+            "black_username": "b",
+            "result": "WIN"
+        },
+        {
+            "game_id": 13,
+            "white_username": "a",
+            "black_username": "b",
+            "result": "WIN"
+        }
+    ]
+}
