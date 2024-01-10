@@ -7,6 +7,7 @@ typedef enum
     LOGOUT,
     CREATE_ROOM,
     JOIN_ROOM,
-    GET_ROOM_LIST
+    GET_ROOM_LIST,
+    GET_TOP_SCORE
 } type;
 #endif // TYPE_H

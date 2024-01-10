@@ -5,6 +5,7 @@
         "type.h": "c",
         "unistd.h": "c",
         "sha.h": "c",
-        "authentication.h": "c"
+        "authentication.h": "c",
+        "dbconn.h": "c"
     }
 }

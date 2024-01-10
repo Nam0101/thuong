@@ -118,13 +118,28 @@ void sha256(const char *input, char outputBuffer[65])
 }
 void handleLogin(int client_socket, struct json_object *parsed_json)
 {
-    printListUser();
     struct json_object *jusername;
     struct json_object *jpassword;
     json_object_object_get_ex(parsed_json, "username", &jusername);
     json_object_object_get_ex(parsed_json, "password", &jpassword);
     const char *inputUsername = json_object_get_string(jusername);
     const char *password = json_object_get_string(jpassword);
+    //check if user is already logged in
+    user *tmp = userList;
+    while (tmp != NULL)
+    {
+        if (strcmp(tmp->username, inputUsername) == 0)
+        {
+            struct json_object *jobj = json_object_new_object();
+            json_object_object_add(jobj, "type", json_object_new_int(LOGIN));
+            json_object_object_add(jobj, "status", json_object_new_int(0));
+            json_object_object_add(jobj, "message", json_object_new_string("USER ALREADY LOGGED IN"));
+            const char *json_string = json_object_to_json_string(jobj);
+            send(client_socket, json_string, strlen(json_string), 0);
+            return;
+        }
+        tmp = tmp->next;
+    }
     // query database
     sqlite3 *db = openDatabase();
     if (db == NULL)

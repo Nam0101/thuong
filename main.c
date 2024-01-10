@@ -15,6 +15,7 @@
 #include "./include/type.h"
 #include "./src/authentication.h"
 #include "./src/room.h"
+#include "./src/top2History.h"
 #define PORT 8080
 #define MAXCLIENT 100
 #define BACKLOG 100
@@ -72,6 +73,9 @@ void *handleClient(void *arg)
             handleJoinRoom(client_socket, parsed_json);
         case GET_ROOM_LIST:
             handleGetRoomList(client_socket, parsed_json);
+            break;
+        case GET_TOP_SCORE:
+            handleGetTopScore(client_socket, parsed_json);
             break;
         default:
             break;
