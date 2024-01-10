@@ -245,6 +245,9 @@ void handleJoinRoom(int clientSocket, struct json_object *parsedJson)
     json_object_object_add(jobj, "black_user", jblackUser);
     json_string = json_object_to_json_string(jobj);
     send(current_room->white_user->socket, json_string, strlen(json_string), 0);
+    // start game on db
+    updateStartGame(current_room);
+    
 }
 void handleLeaveRoom(int client_socket, struct json_object *parsedJson)
 {
@@ -341,7 +344,6 @@ void handleGetRoomList(int clientSocket, struct json_object *parsedJson)
 }
 void handleMove(int clientSocket, struct json_object *parsedJson)
 {
-    printf("%s\n", json_object_to_json_string(parsedJson));
     int roomId;
     struct json_object *jroomId;
     json_object_object_get_ex(parsedJson, "room_id", &jroomId);
@@ -404,37 +406,6 @@ void updateStartGame(room *room)
         return;
     }
     closeDatabase(db);
-}
-void handleStartGame(int clientSocket, struct json_object *parsedJson)
-{
-    int roomId;
-    struct json_object *jroomId;
-    json_object_object_get_ex(parsedJson, "room_id", &jroomId);
-    roomId = json_object_get_int(jroomId);
-    room *current_room = getRoomById(roomId);
-    if (current_room == NULL)
-    {
-        sendResponse(clientSocket, START_GAME, 0, "Room not found");
-        return;
-    }
-    // update on db
-    updateStartGame(current_room);
-    struct json_object *juserId;
-    json_object_object_get_ex(parsedJson, "user_id", &juserId);
-    int userId = json_object_get_int(juserId);
-    if (current_room->black_user->user_id == userId)
-    {
-        send(current_room->white_user->socket, json_object_to_json_string(parsedJson), strlen(json_object_to_json_string(parsedJson)), 0);
-    }
-    else if (current_room->white_user->user_id == userId)
-    {
-        send(current_room->black_user->socket, json_object_to_json_string(parsedJson), strlen(json_object_to_json_string(parsedJson)), 0);
-    }
-    else
-    {
-        sendResponse(clientSocket, START_GAME, 0, "Room is not enough player");
-        return;
-    }
 }
 void calculationScore(double *Ra, double *Rb, double Sa, double Sb, double K)
 {
@@ -635,5 +606,82 @@ void handleSurrender(int clientSocket, struct json_object *parsedJson)
     {
         sendResponse(clientSocket, SURRENDER, 0, "User not found");
         return;
+    }
+}
+void handleChallenge(int clientSocket, struct json_object *parsedJson)
+{
+    int user_id;
+    struct json_object *juserId;
+    json_object_object_get_ex(parsedJson, "to_user_id", &juserId);
+    user_id = json_object_get_int(juserId);
+    user *to_user = getUserByID(user_id);
+    if (to_user == NULL)
+    {
+        sendResponse(clientSocket, CHALLENGE, 0, "User is offline");
+        return;
+    }
+    send(to_user->socket, json_object_to_json_string(parsedJson), strlen(json_object_to_json_string(parsedJson)), 0);
+}
+void handleNotifiChallenge(int clientSocket, struct json_object *parsedJson)
+{
+    printf("%s\n", json_object_to_json_string(parsedJson));
+    int to_user_id, from_user_id;
+    struct json_object *juserId;
+    json_object_object_get_ex(parsedJson, "to_user_id", &juserId);
+    to_user_id = json_object_get_int(juserId);
+    json_object_object_get_ex(parsedJson, "from_user_id", &juserId);
+    from_user_id = json_object_get_int(juserId);
+    user *to_user = getUserByID(to_user_id);
+    if (to_user == NULL)
+    {
+        sendResponse(clientSocket, NOTIFI_CHALLENGE, 0, "User is offline");
+        return;
+    }
+    user *from_user = getUserByID(from_user_id);
+    if (from_user == NULL)
+    {
+        sendResponse(clientSocket, NOTIFI_CHALLENGE, 0, "User is offline");
+        return;
+    }
+    int is_accept;
+    struct json_object *jis_accept;
+    json_object_object_get_ex(parsedJson, "is_accept", &jis_accept);
+    is_accept = json_object_get_int(jis_accept);
+    send(to_user->socket, json_object_to_json_string(parsedJson), strlen(json_object_to_json_string(parsedJson)), 0);
+    if (is_accept == 1)
+    {
+        int room_id = insertRoom2db(to_user->user_id);
+        if (room_id == -1)
+        {
+            printf("Cannot create room\n");
+            sendResponse(clientSocket, NOTIFI_CHALLENGE, 0, "SERVER ERROR");
+            return;
+        }
+        // trả về room_id
+        room *newRoom = createRoom(room_id, 0, NULL, NULL);
+        if (newRoom == NULL)
+        {
+            printf("Cannot create room\n");
+            sendResponse(clientSocket, NOTIFI_CHALLENGE, 0, "SERVER ERROR");
+            return;
+        }
+        addRoom(newRoom);
+        addWhiteUser(room_id, to_user);
+        addBlackUser(room_id, from_user);
+        struct json_object *jroomId = json_object_new_int(room_id);
+        struct json_object *jobj = json_object_new_object();
+        json_object_object_add(jobj, "type", json_object_new_int(START_GAME_BY_CHALLENGE));
+        json_object_object_add(jobj, "status", json_object_new_int(1));
+        json_object_object_add(jobj, "room_id", jroomId);
+        json_object_object_add(jobj, "white_user", json_object_new_string(to_user->username));
+        json_object_object_add(jobj, "black_user", json_object_new_string(from_user->username));
+        json_object_object_add(jobj, "white_user_id", json_object_new_int(to_user->user_id));
+        json_object_object_add(jobj, "black_user_id", json_object_new_int(from_user->user_id));
+        json_object_object_add(jobj, "white_score", json_object_new_int(to_user->score));
+        json_object_object_add(jobj, "black_score", json_object_new_int(from_user->score));
+        updateStartGame(newRoom);
+        const char *json_string = json_object_to_json_string(jobj);
+        send(to_user->socket, json_string, strlen(json_string), 0);
+        send(clientSocket, json_string, strlen(json_string), 0);
     }
 }

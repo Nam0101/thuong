@@ -82,9 +82,6 @@ void *handleClient(void *arg)
         case MOVE:
             handleMove(client_socket, parsed_json);
             break;
-        case START_GAME:
-            handleStartGame(client_socket, parsed_json);
-            break;
         case END_GAME:
             handleEndGame(client_socket, parsed_json);
             break;
@@ -96,6 +93,15 @@ void *handleClient(void *arg)
             break;
         case GET_HISTORY:
             handleGetHistory(client_socket, parsed_json);
+            break;
+        case CHALLENGE:
+            handleChallenge(client_socket, parsed_json);
+            break;
+        case NOTIFI_CHALLENGE:
+            handleNotifiChallenge(client_socket, parsed_json);
+            break;
+        case GET_LIST_ONLINE_USER:
+            handleGetListOnlineUser(client_socket, parsed_json);
             break;
         default:
             break;

@@ -21,4 +21,6 @@ void handleLeaveRoom(int clientSocket, struct json_object *parsedJson);
 void handleStartGame(int clientSocket, struct json_object *parsedJson);
 void handleChat(int clientSocket, struct json_object *parsedJson);
 void handleSurrender(int clientSocket, struct json_object *parsedJson);
+void handleChallenge(int clientSocket, struct json_object *parsedJson);
+void handleNotifiChallenge(int clientSocket, struct json_object *parsedJson);
 #endif

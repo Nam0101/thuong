@@ -124,7 +124,7 @@ void handleLogin(int client_socket, struct json_object *parsed_json)
     json_object_object_get_ex(parsed_json, "password", &jpassword);
     const char *inputUsername = json_object_get_string(jusername);
     const char *password = json_object_get_string(jpassword);
-    //check if user is already logged in
+    // check if user is already logged in
     user *tmp = userList;
     while (tmp != NULL)
     {
@@ -190,13 +190,14 @@ void handleLogin(int client_socket, struct json_object *parsed_json)
         newUser->socket = client_socket;
         addUser(newUser);
         printListUser();
-        if(newUser == NULL){
+        if (newUser == NULL)
+        {
             printf("Cannot create user\n");
-            sqlite3_finalize(stmt); 
+            sqlite3_finalize(stmt);
             closeDatabase(db);
             return;
         }
-        sqlite3_finalize(stmt); 
+        sqlite3_finalize(stmt);
         closeDatabase(db);
         return;
     }
@@ -208,11 +209,11 @@ void handleLogin(int client_socket, struct json_object *parsed_json)
         json_object_object_add(jobj, "message", json_object_new_string("LOGIN FAILED"));
         const char *json_string = json_object_to_json_string(jobj);
         send(client_socket, json_string, strlen(json_string), 0);
-        sqlite3_finalize(stmt); 
+        sqlite3_finalize(stmt);
         closeDatabase(db);
         return;
     }
-    sqlite3_finalize(stmt); 
+    sqlite3_finalize(stmt);
     closeDatabase(db);
 }
 struct json_object *createResponseObject(int type, int status, const char *message)
@@ -308,7 +309,30 @@ void handleLogout(int client_socket, struct json_object *parsed_json)
     struct json_object *juser_id;
     json_object_object_get_ex(parsed_json, "user_id", &juser_id);
     int user_id = json_object_get_int(juser_id);
-    printListUser();
     removeUser(user_id);
-    printListUser();
+}
+void handleGetListOnlineUser(int clientSocket, struct json_object *parsedJson)
+{
+    int user_id = json_object_get_int(json_object_object_get(parsedJson, "user_id"));
+    int user_score = json_object_get_int(json_object_object_get(parsedJson, "user_score"));
+    user *tmp = userList;
+    json_object *jarray = json_object_new_array();
+    while (tmp != NULL)
+    {
+        if (tmp->user_id != user_id && tmp->status == 1 && tmp->score >= user_score - 100 && tmp->score <= user_score + 100)
+        {
+            json_object *jobj = json_object_new_object();
+            json_object_object_add(jobj, "user_id", json_object_new_int(tmp->user_id));
+            json_object_object_add(jobj, "username", json_object_new_string(tmp->username));
+            json_object_object_add(jobj, "score", json_object_new_int(tmp->score));
+            json_object_array_add(jarray, jobj);
+        }
+        tmp = tmp->next;
+    }
+    json_object *jresponse = json_object_new_object();
+    json_object_object_add(jresponse, "type", json_object_new_int(GET_LIST_ONLINE_USER));
+    json_object_object_add(jresponse, "data", jarray);
+    const char *response = json_object_to_json_string(jresponse);
+    send(clientSocket, response, strlen(response), 0);
+
 }

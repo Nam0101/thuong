@@ -21,6 +21,7 @@ int is_login = 0;
 char USERNAME[100];
 int USER_ID;
 int SCORE;
+int TO_USER_ID;
 
 void login_func(int client_socket)
 {
@@ -135,19 +136,6 @@ void move(int client_socket)
     send(client_socket, json_string, strlen(json_string), 0);
     printf("%s\n", json_string);
 }
-void start_game(int client_socket)
-{
-    struct json_object *jobj = json_object_new_object();
-    struct json_object *jtype = json_object_new_int(START_GAME);
-    json_object_object_add(jobj, "type", jtype);
-    json_object_object_add(jobj, "user_id", json_object_new_int(USER_ID));
-    printf("Room id: "); // room đang chơi
-    int room_id;
-    scanf("%d", &room_id);
-    json_object_object_add(jobj, "room_id", json_object_new_int(room_id));
-    const char *json_string = json_object_to_json_string(jobj);
-    send(client_socket, json_string, strlen(json_string), 0);
-}
 void out_room(int client_socket)
 {
     struct json_object *jobj = json_object_new_object();
@@ -217,6 +205,37 @@ void get_history(int client_socket)
     const char *json_string = json_object_to_json_string(jobj);
     send(client_socket, json_string, strlen(json_string), 0);
 }
+void challenge(int client_socket)
+{
+    struct json_object *jobj = json_object_new_object();
+    struct json_object *jtype = json_object_new_int(CHALLENGE);
+    json_object_object_add(jobj, "type", jtype);
+    json_object_object_add(jobj, "from_user_id", json_object_new_int(USER_ID));
+    printf("To user id: ");
+    int to_user_id;
+    scanf("%d", &to_user_id);
+    TO_USER_ID = to_user_id;
+    json_object_object_add(jobj, "to_user_id", json_object_new_int(to_user_id));
+    const char *json_string = json_object_to_json_string(jobj);
+    send(client_socket, json_string, strlen(json_string), 0);
+}
+void notifi_challenge(int client_socket)
+{
+    struct json_object *jobj = json_object_new_object();
+    struct json_object *jtype = json_object_new_int(NOTIFI_CHALLENGE);
+    json_object_object_add(jobj, "type", jtype);
+    json_object_object_add(jobj, "from_user_id", json_object_new_int(USER_ID));
+    printf("Is accept: ");
+    int is_accept;
+    scanf("%d", &is_accept);
+    json_object_object_add(jobj, "is_accept", json_object_new_int(is_accept));
+    printf("To user id: ");
+    int to_user_id;
+    scanf("%d", &to_user_id);
+    json_object_object_add(jobj, "to_user_id", json_object_new_int(to_user_id));
+    const char *json_string = json_object_to_json_string(jobj);
+    send(client_socket, json_string, strlen(json_string), 0);
+}
 void *send_func(void *arg)
 {
     int client_socket = *(int *)arg;
@@ -236,6 +255,9 @@ void *send_func(void *arg)
         printf("11. End game\n");
         printf("12. Chat\n");
         printf("13. Surrender\n");
+        printf("14. Get history\n");
+        printf("15. CHALLENGE\n");
+        printf("16. Notifi challenge\n");
         printf("Your choice: ");
         int choice;
         scanf("%d", &choice);
@@ -262,9 +284,6 @@ void *send_func(void *arg)
         case 7:
             move(client_socket);
             break;
-        case 8:
-            start_game(client_socket);
-            break;
         case 9:
             out_room(client_socket);
             break;
@@ -282,6 +301,15 @@ void *send_func(void *arg)
             break;
         case 14:
             get_history(client_socket);
+            break;
+        case 15:
+            challenge(client_socket);
+            break;
+        case 16:
+            notifi_challenge(client_socket);
+            break;
+        case 17:
+            get_list_online_user(client_socket);
             break;
         default:
             break;

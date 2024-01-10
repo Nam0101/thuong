@@ -17,4 +17,5 @@ void sendResponse(int client_socket, int type, int status, const char *message);
 void handleLogout(int client_socket, struct json_object *parsed_json);
 user *getListUser();
 user *getUserByID(int user_id);
+void handleGetListOnlineUser(int clientSocket, struct json_object *parsedJson);
 #endif
