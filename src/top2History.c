@@ -90,5 +90,7 @@ void handleGetHistory(int clientSocket, struct json_object *parsed_json)
     json_object_object_add(jresponse, "type", json_object_new_int(GET_HISTORY));
     json_object_object_add(jresponse, "data", jarray);
     const char *response = json_object_to_json_string(jresponse);
-    send(clientSocket, response, strlen(response), 0);
+    printf("%s\n", response);
+    int byte_sent = send(clientSocket, response, strlen(response), 0);
+    printf("Sent %d bytes\n", byte_sent);
 }

@@ -15,7 +15,7 @@
 #include "./include/type.h"
 #define SERVER_ADDRESS "127.0.0.1"
 #define PORT 8080
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 4096
 
 int is_login = 0;
 char USERNAME[100];

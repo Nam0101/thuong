@@ -19,7 +19,7 @@
 #define PORT 8080
 #define MAXCLIENT 100
 #define BACKLOG 100
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 4096
 
 struct ThreadArgs
 {

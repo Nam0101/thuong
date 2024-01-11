@@ -6,6 +6,7 @@
         "unistd.h": "c",
         "sha.h": "c",
         "authentication.h": "c",
-        "dbconn.h": "c"
+        "dbconn.h": "c",
+        "top2history.h": "c"
     }
 }
