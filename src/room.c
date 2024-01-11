@@ -362,6 +362,7 @@ void handleMove(int clientSocket, struct json_object *parsedJson)
         printf("send to white user\n");
         printf("%s\n", json_object_to_json_string(parsedJson));
         printf("white user id: %d\n", current_room->white_user->user_id);
+        printf("white address: %d\n", current_room->black_user->socket);
     }
     else if (current_room->white_user->user_id == userId)
     {
@@ -369,6 +370,7 @@ void handleMove(int clientSocket, struct json_object *parsedJson)
         printf("send to black user\n");
         printf("%s\n", json_object_to_json_string(parsedJson));
         printf("black user id: %d\n", current_room->black_user->user_id);
+        printf("black address: %d\n", current_room->black_user->socket);
     }
     else
     {
