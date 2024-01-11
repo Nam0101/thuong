@@ -154,6 +154,7 @@ int main()
     while (1)
     {
         int client_socket = accept(server_socket, (struct sockaddr *)&client_address, &client_address_len);
+        printf("client_socket connect: %d\n", client_socket);
         if (client_socket == -1)
         {
             printf("Accept failed!\n");
