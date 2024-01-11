@@ -360,11 +360,15 @@ void handleMove(int clientSocket, struct json_object *parsedJson)
     {
         send(current_room->white_user->socket, json_object_to_json_string(parsedJson), strlen(json_object_to_json_string(parsedJson)), 0);
         printf("send to white user\n");
+        printf("%s\n", json_object_to_json_string(parsedJson));
+        printf("white user id: %d\n", current_room->white_user->user_id);
     }
     else if (current_room->white_user->user_id == userId)
     {
         send(current_room->black_user->socket, json_object_to_json_string(parsedJson), strlen(json_object_to_json_string(parsedJson)), 0);
         printf("send to black user\n");
+        printf("%s\n", json_object_to_json_string(parsedJson));
+        printf("black user id: %d\n", current_room->black_user->user_id);
     }
     else
     {
@@ -648,7 +652,14 @@ void handleNotifiChallenge(int clientSocket, struct json_object *parsedJson)
     struct json_object *jis_accept;
     json_object_object_get_ex(parsedJson, "is_accept", &jis_accept);
     is_accept = json_object_get_int(jis_accept);
-    send(to_user->socket, json_object_to_json_string(parsedJson), strlen(json_object_to_json_string(parsedJson)), 0);
+    struct json_object *jobj = json_object_new_object();
+    json_object_object_add(jobj, "type", json_object_new_int(NOTIFI_CHALLENGE));
+    json_object_object_add(jobj, "status", json_object_new_int(1));
+    json_object_object_add(jobj, "is_accept", json_object_new_int(is_accept));
+    json_object_object_add(jobj, "from_user", json_object_new_string(from_user->username));
+    json_object_object_add(jobj, "from_user_id", json_object_new_int(from_user->user_id));
+    const char *json_string = json_object_to_json_string(jobj);
+    send(to_user->socket, json_string, strlen(json_string), 0);
     if (is_accept == 1)
     {
         int room_id = insertRoom2db(to_user->user_id);

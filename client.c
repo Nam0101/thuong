@@ -119,7 +119,7 @@ void move(int client_socket)
     struct json_object *jtype = json_object_new_int(MOVE);
     json_object_object_add(jobj, "type", jtype);
     json_object_object_add(jobj, "user_id", json_object_new_int(USER_ID));
-    printf("Room id: "); 
+    printf("Room id: ");
     int room_id;
     scanf("%d", &room_id);
     json_object_object_add(jobj, "room_id", json_object_new_int(room_id));
@@ -171,7 +171,7 @@ void send_chat(int client_socket)
     struct json_object *jobj = json_object_new_object();
     struct json_object *jtype = json_object_new_int(CHAT);
     json_object_object_add(jobj, "type", jtype);
-    json_object_object_add(jobj, "user_id", json_object_new_int(USER_ID));
+    json_object_object_add(jobj, "from_user_id", json_object_new_int(USER_ID));
     printf("User id: ");
     int user_id;
     scanf("%d", &user_id);
@@ -179,7 +179,7 @@ void send_chat(int client_socket)
     printf("Message: ");
     char message[100];
     scanf("%s", message);
-    json_object_object_add(jobj, "message", json_object_new_string(message));
+    json_object_object_add(jobj, "message_content", json_object_new_string(message));
     const char *json_string = json_object_to_json_string(jobj);
     send(client_socket, json_string, strlen(json_string), 0);
 }
