@@ -246,7 +246,6 @@ void handleJoinRoom(int clientSocket, struct json_object *parsedJson)
     json_string = json_object_to_json_string(jobj);
     send(current_room->white_user->socket, json_string, strlen(json_string), 0);
     updateStartGame(current_room);
-
 }
 void handleLeaveRoom(int client_socket, struct json_object *parsedJson)
 {
@@ -345,6 +344,7 @@ void handleMove(int clientSocket, struct json_object *parsedJson)
 {
     int roomId;
     struct json_object *jroomId;
+    printf("%s\n", json_object_to_json_string(parsedJson));
     json_object_object_get_ex(parsedJson, "room_id", &jroomId);
     roomId = json_object_get_int(jroomId);
     room *current_room = getRoomById(roomId);
@@ -359,10 +359,12 @@ void handleMove(int clientSocket, struct json_object *parsedJson)
     if (current_room->black_user->user_id == userId)
     {
         send(current_room->white_user->socket, json_object_to_json_string(parsedJson), strlen(json_object_to_json_string(parsedJson)), 0);
+        printf("send to white user\n");
     }
     else if (current_room->white_user->user_id == userId)
     {
         send(current_room->black_user->socket, json_object_to_json_string(parsedJson), strlen(json_object_to_json_string(parsedJson)), 0);
+        printf("send to white user\n");
     }
     else
     {
