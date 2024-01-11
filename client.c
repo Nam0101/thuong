@@ -119,7 +119,7 @@ void move(int client_socket)
     struct json_object *jtype = json_object_new_int(MOVE);
     json_object_object_add(jobj, "type", jtype);
     json_object_object_add(jobj, "user_id", json_object_new_int(USER_ID));
-    printf("Room id: "); // room đang chơi
+    printf("Room id: "); 
     int room_id;
     scanf("%d", &room_id);
     json_object_object_add(jobj, "room_id", json_object_new_int(room_id));
